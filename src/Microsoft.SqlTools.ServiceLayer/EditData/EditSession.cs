@@ -1,4 +1,4 @@
-﻿//
+//
 // Copyright (c) Microsoft. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
@@ -389,12 +389,43 @@ namespace Microsoft.SqlTools.ServiceLayer.EditData
                 NextRowId--;
             }
         }
+        
+        /// <summary>
+        /// Generates a single script file with all the pending edits scripted.
+        /// </summary>
+        /// <returns>The generated scripts</returns>
+        public string ScriptEdits()
+        {
+            ThrowIfNotInitialized();
+            
+            var builder = new StringBuilder();
+            
+            // Trust the RowEdit to sort itself appropriately as we do in CommitEditsInternal
+            // is invoked.
+            List<RowEditBase> editOperations = EditCache.Values.ToList();
+            editOperations.Sort();
+
+            if (editOperations.Count > 0)
+            {
+                builder.AppendLine($"-- Edit scripts generated on {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
+                builder.AppendLine($"-- Table: {objectMetadata.EscapedMultipartName}");
+            }
+            
+            // Convert each update in the cache into an insert/update/delete statement
+            foreach (RowEditBase rowEdit in editOperations)
+            {
+                builder.AppendLine(rowEdit.GetScript());
+            }
+
+            // Return the generated script
+            return builder.ToString();
+        }
 
         /// <summary>
         /// Generates a single script file with all the pending edits scripted.
         /// </summary>
         /// <param name="outputPath">The path to output the script to</param>
-        /// <returns></returns>
+        /// <returns>The path to the generated script</returns>
         public string ScriptEdits(string outputPath)
         {
             ThrowIfNotInitialized();

@@ -1,4 +1,4 @@
-﻿//
+//
 // Copyright (c) Microsoft. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 //
@@ -1018,6 +1018,89 @@ namespace Microsoft.SqlTools.ServiceLayer.UnitTests.EditData
                 // ... The written file should have two lines, one for each edit
                 Assert.AreEqual(2, File.ReadAllLines(outputPath).Length);
             }
+        }
+
+        [Test]
+        public void ScriptEditsNoParamNotInitialized()
+        {
+            // Setup:
+            //      Create a session without initializing
+            var emf = new Mock<IEditMetadataFactory>();
+            var s = new EditSession(emf.Object);
+            
+            // If: I ask to script edits without initializing
+            // Then: I should get an exception
+            Assert.Throws<InvalidOperationException>(() => s.ScriptEdits());
+        }
+
+        [Test]
+        public async Task ScriptEditsNoParamNoEdits()
+        {
+            // Setup: Create a session with a proper query and metadata
+            EditSession s = await GetBasicSession();
+            
+            // If: I script the edit cache with no edits
+            string script = s.ScriptEdits();
+
+            // Then: The script should be empty
+            Assert.That(script, Is.Empty);
+        }
+
+        [Test]
+        public async Task ScriptEditsNoParamSingleEdit()
+        {
+            // Setup:
+            //      Create a session with a proper query and metadata
+            EditSession s = await GetBasicSession();
+            
+            // ... Add one mock edit that will generate a script
+            var edit = new Mock<RowEditBase>();
+            edit.Setup(e => e.GetScript()).Returns("INSERT statement");
+            s.EditCache[0] = edit.Object;
+            
+            // If: I script the edit cache
+            string script = s.ScriptEdits();
+            
+            // Then:
+            // ... The script should contain the edit script
+            Assert.That(script, Does.Contain("INSERT statement"));
+            // ... The script should contain the header with the table name
+            Assert.That(script, Does.Contain("-- Table:"));
+            // ... The script should contain a date stamp
+            Assert.That(script, Does.Contain("-- Edit scripts generated on"));
+        }
+
+        [Test]
+        public async Task ScriptEditsNoParamMultipleEdits()
+        {
+            // Setup:
+            //      Create a session with a proper query and metadata
+            EditSession s = await GetBasicSession();
+            
+            // ... Add multiple mock edits that will generate scripts
+            var insert = new Mock<RowEditBase>();
+            insert.Setup(e => e.GetScript()).Returns("INSERT statement");
+
+            var update = new Mock<RowEditBase>();
+            update.Setup(e => e.GetScript()).Returns("UPDATE statement");
+            
+            var delete = new Mock<RowEditBase>();
+            delete.Setup(e => e.GetScript()).Returns("DELETE statement");
+            
+            s.EditCache[0] = insert.Object;
+            s.EditCache[1] = update.Object;
+            s.EditCache[2] = delete.Object;
+            
+            // If: I script the edit cache
+            string script = s.ScriptEdits();
+            
+            // Then:
+            // ... The script should contain all edit scripts
+            Assert.That(script, Does.Contain("INSERT statement"));
+            Assert.That(script, Does.Contain("UPDATE statement"));
+            Assert.That(script, Does.Contain("DELETE statement"));
+            // The script should contain the header only once
+            Assert.That(script.IndexOf("-- Edit scripts generated on"), Is.EqualTo(script.LastIndexOf("-- Edit scripts generated on")));
         }
 
         #endregion
