@@ -142,11 +142,47 @@ namespace Microsoft.SqlTools.ServiceLayer.EditData
             string[] objectNameParts = { smoResult.Schema, smoResult.Name };
             string escapedMultipartName = ToSqlScript.FormatMultipartIdentifier(objectNameParts);
 
+            // Get foreign key information for tables
+            List<ReferencedTableInfo> referencedTables = new List<ReferencedTableInfo>();
+            if (smoTable != null)
+            {
+                try
+                {
+                    foreach (ForeignKey fk in smoTable.ForeignKeys)
+                    {
+                        var referencedTable = new ReferencedTableInfo
+                        {
+                            SchemaName = fk.ReferencedTableSchema,
+                            TableName = fk.ReferencedTable,
+                            FullyQualifiedName = $"{fk.ReferencedTableSchema}.{fk.ReferencedTable}",
+                            ForeignKeyName = fk.Name,
+                            SourceColumns = new string[fk.Columns.Count],
+                            ReferencedColumns = new string[fk.Columns.Count]
+                        };
+
+                        // Get column mappings
+                        for (int i = 0; i < fk.Columns.Count; i++)
+                        {
+                            referencedTable.SourceColumns[i] = fk.Columns[i].Name;
+                            referencedTable.ReferencedColumns[i] = fk.Columns[i].ReferencedColumn;
+                        }
+
+                        referencedTables.Add(referencedTable);
+                    }
+                }
+                catch
+                {
+                    // If we can't get foreign key information, continue without it
+                    // This could happen due to permissions or other issues
+                }
+            }
+
             return new EditTableMetadata
             {
                 Columns = editColumns.ToArray(),
                 EscapedMultipartName = escapedMultipartName,
-                IsMemoryOptimized = isMemoryOptimized
+                IsMemoryOptimized = isMemoryOptimized,
+                ReferencedTables = referencedTables.ToArray()
             };
         }
     }

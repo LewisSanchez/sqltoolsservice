@@ -44,6 +44,11 @@ namespace Microsoft.SqlTools.ServiceLayer.EditData
         /// </summary>
         public bool IsMemoryOptimized { get; set; }
 
+        /// <summary>
+        /// List of tables that are referenced by foreign keys in this table
+        /// </summary>
+        public ReferencedTableInfo[] ReferencedTables { get; set; }
+
         #endregion
 
         #region Extended Properties (properties provided by SqlClient)

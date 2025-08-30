@@ -341,6 +341,18 @@ namespace Microsoft.SqlTools.ServiceLayer.EditData
         }
 
         /// <summary>
+        /// Gets the tables that are referenced by foreign keys in the current table
+        /// </summary>
+        /// <returns>Information about tables referenced by this table's foreign keys</returns>
+        public ReferencedTableInfo[] GetReferencedTables()
+        {
+            ThrowIfNotInitialized();
+            
+            // Return the referenced tables that were populated during initialization
+            return objectMetadata?.ReferencedTables ?? new ReferencedTableInfo[0];
+        }
+
+        /// <summary>
         /// Reverts a cell in a pending edit
         /// </summary>
         /// <param name="rowId">Internal ID of the row to have its edits reverted</param>

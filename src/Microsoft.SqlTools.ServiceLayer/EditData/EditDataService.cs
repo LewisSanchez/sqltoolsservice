@@ -8,6 +8,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Data.Common;
+using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.SqlTools.Hosting.Protocol;
 using Microsoft.SqlTools.Hosting.Protocol.Contracts;
@@ -87,6 +88,7 @@ namespace Microsoft.SqlTools.ServiceLayer.EditData
             serviceHost.SetRequestHandler(EditUpdateCellRequest.Type, HandleUpdateCellRequest, true);
             serviceHost.SetRequestHandler(EditCommitRequest.Type, HandleCommitRequest, true);
             serviceHost.SetRequestHandler(EditScriptRequest.Type, this.HandleEditScriptRequest, true);
+            serviceHost.SetRequestHandler(GetReferencedTablesRequest.Type, this.HandleGetReferencedTablesRequest, true);
         }
 
         #region Request Handlers
@@ -238,6 +240,34 @@ namespace Microsoft.SqlTools.ServiceLayer.EditData
                 EditSession session = GetActiveSessionOrThrow(scriptParams.OwnerUri);
                 string script = session.ScriptEdits();
                 var result = new EditScriptResult() { Script = script };
+
+                await requestContext.SendResult(result);
+            }
+            catch (Exception e)
+            {
+                await requestContext.SendError(e.Message);
+            }
+        }
+
+        internal async Task HandleGetReferencedTablesRequest(GetReferencedTablesParams referencedTablesParams,
+            RequestContext<GetReferencedTablesResult> requestContext)
+        {
+            try
+            {
+                EditSession session = GetActiveSessionOrThrow(referencedTablesParams.OwnerUri);
+                ReferencedTableInfo[] referencedTables = session.GetReferencedTables();
+                
+                Contracts.ReferencedTableInfo[] tableReferences = referencedTables.Select(t => new Contracts.ReferencedTableInfo()
+                {
+                    SchemaName = t.SchemaName,
+                    TableName = t.TableName,
+                    FullyQualifiedName = t.FullyQualifiedName,
+                    ForeignKeyName = t.ForeignKeyName,
+                    SourceColumns = t.SourceColumns,
+                    ReferencedColumns = t.ReferencedColumns
+                }).ToArray();
+                
+                var result = new GetReferencedTablesResult() { ReferencedTables = tableReferences };
 
                 await requestContext.SendResult(result);
             }
